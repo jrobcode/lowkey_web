@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: websocket-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: /web-server  # Correct placement of the root directory
+    branch: main
+
+

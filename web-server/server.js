@@ -11,9 +11,8 @@ const wss = new WebSocket.Server({ server });
 app.use(cors());
 app.use(express.json());
 app.get('/healthz', (req, res) => {
-  res.status(200).send('OK');
+ res.status(200).send('OK');
 });
-
 
 let clients = [];
 
@@ -44,17 +43,34 @@ const interval = setInterval(() => {
 
 wss.on('close', () => clearInterval(interval));
 
-app.post('/tenlyx', (req, res) => {
+// Post route to handle Tenlyx event and forward to WebSocket clients
+app.post('/tenlyx', async (req, res) => {
  const event = req.body;
  console.log('Received Tenlyx Event:', event);
 
+ // Forward event to connected WebSocket clients
  clients.forEach(ws => {
    if (ws.readyState === WebSocket.OPEN) {
      ws.send(JSON.stringify(event));
    }
  });
 
- res.sendStatus(200);
+ // Trigger n8n webhook with the event data
+ try {
+   const webhookUrl = process.env.N8N_WEBHOOK_URL || 'https://your-n8n-instance-url/webhook/telnyx-call-events';
+   const response = await axios.post(webhookUrl, {
+     event: event.event_type,
+     call_control_id: event.payload.call_control_id,
+     from: event.payload.from,
+     to: event.payload.to,
+     timestamp: event.payload.timestamp,
+   });
+   console.log('Successfully triggered n8n webhook:', response.data);
+ } catch (error) {
+   console.error('Error triggering n8n webhook:', error);
+ }
+
+ res.sendStatus(200); // Acknowledge the request
 });
 
 const PORT = process.env.PORT || 3000;
